@@ -129,7 +129,7 @@ namespace AccesoDatos
                             break;
 
                         case "10":
-                            TipoDatoSQL == SqlDbType.Real;
+                            TipoDatoSQL = SqlDbType.Real;
                             break;
 
                         case "11":
