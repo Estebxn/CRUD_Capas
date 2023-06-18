@@ -10,7 +10,6 @@ namespace AccesoDatos
 {
     public class ClsDataBase
     {
-
         #region Variables Privadas
 
         private SqlConnection _objSqlConnection;
@@ -48,7 +47,7 @@ namespace AccesoDatos
             DtParametros.Columns.Add("TipoDato");
             DtParametros.Columns.Add("Valor");
 
-            NombreDB = string.Empty;
+            NombreDB = "DB_BasePruebas";
 
 
         }
@@ -59,37 +58,227 @@ namespace AccesoDatos
 
         private void CrearConexionBaseDatos(ref ClsDataBase objDataBase)
         {
+            switch (objDataBase.NombreDB)
+            {
 
+                case "DB_BasePruebas":
+                    objDataBase.ObjSqlConnection = new SqlConnection(Properties.Settings.Default.cadenaConeccion_DB_BasePruebas);
+                    break;
+                default:
+                    break;
+            }
         }
 
         private void ValidarConexionBaseDatos(ref ClsDataBase objDataBase)
         {
-
+            if (objDataBase.ObjSqlConnection.State == ConnectionState.Closed)
+            {
+                objDataBase.ObjSqlConnection.Open();
+            }
+            else
+            {
+                objDataBase.ObjSqlConnection.Close();
+                objDataBase.ObjSqlConnection.Dispose();
+            }
         }
 
-        private void CrearConexionBaseDatos(ref ClsDataBase objDataBase)
+        private void AgregarParametros(ref ClsDataBase objDataBase)
         {
+            if (objDataBase.DtParametros != null)
+            {
+                SqlDbType TipoDatoSQL = new SqlDbType();
 
+                foreach (DataRow item in objDataBase.DtParametros.Rows)
+                {
+                    switch (item[1])
+                    {
+                        case "1":
+                            TipoDatoSQL = SqlDbType.Bit;
+                            break;
+
+                        case "2":
+                            TipoDatoSQL = SqlDbType.TinyInt;
+                            break;
+
+                        case "3":
+                            TipoDatoSQL = SqlDbType.SmallInt;
+                            break;
+
+                        case "4":
+                            TipoDatoSQL = SqlDbType.Int;
+                            break;
+
+                        case "5":
+                            TipoDatoSQL = SqlDbType.BigInt;
+                            break;
+
+                        case "6":
+                            TipoDatoSQL = SqlDbType.Decimal;
+                            break;
+
+                        case "7":
+                            TipoDatoSQL = SqlDbType.SmallMoney;
+                            break;
+
+                        case "8":
+                            TipoDatoSQL = SqlDbType.Money;
+                            break;
+
+                        case "9":
+                            TipoDatoSQL = SqlDbType.Float;
+                            break;
+
+                        case "10":
+                            TipoDatoSQL == SqlDbType.Real;
+                            break;
+
+                        case "11":
+                            TipoDatoSQL = SqlDbType.Date;
+                            break;
+
+                        case "12":
+                            TipoDatoSQL = SqlDbType.Time;
+                            break;
+
+                        case "13":
+                            TipoDatoSQL = SqlDbType.SmallDateTime;
+                            break;
+
+                        case "14":
+                            TipoDatoSQL = SqlDbType.DateTime;
+                            break;
+
+                        case "15":
+                            TipoDatoSQL = SqlDbType.Char;
+                            break;
+
+                        case "16":
+                            TipoDatoSQL = SqlDbType.NChar;
+                            break;
+
+                        case "17":
+                            TipoDatoSQL = SqlDbType.VarChar;
+                            break;
+
+                        case "18":
+                            TipoDatoSQL = SqlDbType.NVarChar;
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    if (objDataBase.Scalar)
+                    {
+                        if (item[2].ToString().Equals(string.Empty))
+                        {
+                            objDataBase.ObjSqlCommand.Parameters.Add(item[0].ToString(), TipoDatoSQL).Value = DBNull.Value;
+                        }
+                        else
+                        {
+                            objDataBase.ObjSqlCommand.Parameters.Add(item[0].ToString(), TipoDatoSQL).Value = item[2].ToString();
+                        }
+                    }
+                    else
+                    {
+                        if (item[2].ToString().Equals(string.Empty))
+                        {
+                            objDataBase.ObjSqlDataAdapter.SelectCommand.Parameters.Add(item[0].ToString(), TipoDatoSQL).Value = DBNull.Value;
+                        }
+                        else
+                        {
+                            objDataBase.ObjSqlDataAdapter.SelectCommand.Parameters.Add(item[0].ToString(), TipoDatoSQL).Value = item[2].ToString();
+                        }
+                    }
+                }
+
+            }
         }
 
-        private void CrearConexionBaseDatos(ref ClsDataBase objDataBase)
+        private void PrepararConexionBaseDatos(ref ClsDataBase objDataBase)
         {
-
+            CrearConexionBaseDatos(ref objDataBase);
+            ValidarConexionBaseDatos(ref objDataBase);
         }
 
-        private void CrearConexionBaseDatos(ref ClsDataBase objDataBase)
+        private void EjecutarDataAdapter(ref ClsDataBase objDataBase)
         {
+            try
+            {
+                PrepararConexionBaseDatos(ref objDataBase);
 
+                objDataBase.ObjSqlDataAdapter = new SqlDataAdapter(objDataBase.NombreSP, objDataBase.ObjSqlConnection);
+                objDataBase.ObjSqlDataAdapter.SelectCommand.CommandType = CommandType.StoredProcedure;
+                AgregarParametros(ref objDataBase);
+                objDataBase.DsResultados = new DataSet();
+                objDataBase.ObjSqlDataAdapter.Fill(objDataBase.DsResultados, objDataBase.NombreTabla);
+            }
+            catch (Exception ex)
+            {
+
+                objDataBase.MensajeErrorDB = ex.Message.ToString();
+
+            }
+            finally
+            {
+                if (objDataBase.ObjSqlConnection.State == ConnectionState.Open)
+                {
+                    ValidarConexionBaseDatos(ref objDataBase);
+                }
+            }
         }
 
-        private void CrearConexionBaseDatos(ref ClsDataBase objDataBase)
+        private void EjecutarCommand(ref ClsDataBase objDataBase)
         {
+            try
+            {
+                PrepararConexionBaseDatos(ref objDataBase);
+                objDataBase.ObjSqlCommand = new SqlCommand(objDataBase.NombreSP, objDataBase.ObjSqlConnection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
 
+                AgregarParametros(ref objDataBase);
+
+                if (objDataBase.Scalar)
+                {
+                    objDataBase.ValorScalar = objDataBase.ObjSqlCommand.ExecuteScalar().ToString().Trim();
+                }
+                else
+                {
+                    objDataBase.ObjSqlCommand.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+
+                objDataBase.MensajeErrorDB = ex.Message.ToString();
+
+            }
+            finally
+            {
+                if (objDataBase.ObjSqlConnection.State == ConnectionState.Open)
+                {
+                    ValidarConexionBaseDatos(ref objDataBase);
+                }
+            }
         }
 
         #endregion
 
         #region Métodos Públicos
+
+        public void CRUD(ref ClsDataBase objDataBase)
+        {
+            if (objDataBase.Scalar)
+            {
+                EjecutarCommand(ref objDataBase);
+            }
+            else
+            {
+                EjecutarDataAdapter(ref objDataBase);
+            }
+        }
 
         #endregion
 
